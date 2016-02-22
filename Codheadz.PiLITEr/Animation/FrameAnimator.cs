@@ -1,56 +1,55 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Gpio;
+using Windows.Foundation;
 
 namespace Codheadz.PiLITEr.Animation
 {
     public delegate void AnimationComplete();
 
-    public sealed class FrameAnimator
+    public sealed class FrameAnimator : IDisposable
     {
-        private List<IFrame> frames;
         private IPiLITErController controller;
-
-        public event AnimationComplete OnAnimationComplete;
-
-        private void FireAnimationComplete()
-        {
-            if (OnAnimationComplete != null)
-                OnAnimationComplete();
-        }
+        private List<IFrame> frames;
 
         public FrameAnimator(IPiLITErController controller)
         {
-            
             frames = new List<IFrame>();
             this.controller = controller;
         }
 
-        private Task task;
-        private CancellationTokenSource tokenSource;
+        public event AnimationComplete OnAnimationComplete;
 
-        public void Stop()
+        public void AddFrame(IFrame frame)
         {
-            controller.AllOff();
-            tokenSource.Cancel();
+            frames.Add(frame);
         }
 
-        public void Play()
+        public void AddFrames(IList<IFrame> framesToAdd)
         {
-            if (tokenSource != null && tokenSource.IsCancellationRequested)
-                tokenSource.Cancel();
+            frames.AddRange(framesToAdd);
+        }
 
-            tokenSource = new CancellationTokenSource();
-            CancellationToken ct = tokenSource.Token;
+        public void Clear()
+        {
+            frames.Clear();
+        }
 
-            task = Task.Factory.StartNew(async () =>
+        public void Dispose()
+        {
+            if (controller != null)
+                controller.Dispose();
+
+            controller = null;
+        }
+
+        public IAsyncAction PlayAsync()
+        {
+            return Task.Run(async () =>
             {
                 for (int i = 0; i < frames.Count; i++)
                 {
-                    ct.ThrowIfCancellationRequested();
-
                     var current = frames[i];
                     foreach (var onPin in current.OnPins)
                     {
@@ -61,52 +60,17 @@ namespace Codheadz.PiLITEr.Animation
                         controller.Write(offPin, GpioPinValue.Low);
                     }
 
-                    if (ct.IsCancellationRequested)
-                    {
-                        // Clean up here, then...
-                        ct.ThrowIfCancellationRequested();
-                    }
-
                     await Task.Delay(current.Duration);
                 }
+
                 FireAnimationComplete();
-            });
-
-            try
-            {
-                task.Wait();
-            }
-            catch (AggregateException e)
-            {
-            }
-            finally
-            {
-                tokenSource.Dispose();
-            }
+            }).AsAsyncAction();
         }
 
-        public void AddFrame(IFrame frame)
+        private void FireAnimationComplete()
         {
-            if(tokenSource != null)
-                tokenSource.Cancel();
-
-            frames.Add(frame);
-        }
-
-        public void AddFrames(IList<IFrame> framesToAdd)
-        {
-            if (tokenSource != null)
-                tokenSource.Cancel();
-
-            frames.AddRange(framesToAdd);
-        }
-
-        public void Clear()
-        {
-            if (tokenSource != null)
-                tokenSource.Cancel();
-
-            frames.Clear();
+            if (OnAnimationComplete != null)
+                OnAnimationComplete();
         }
     }
 }
