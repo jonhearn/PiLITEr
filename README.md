@@ -7,3 +7,11 @@ The Pi-LITEr is a fully assembled add on board for the Raspberry Pi computer. It
 https://www.wirelessthings.net/pi-liter-8-led-strip-for-the-raspberry-pi
 
 This repository contains a Windows 10 IOT component for controlling the Pi-LITEr led and an example background application.  Component includes functionallity that allows basic animation of the leds.
+
+Nuget package can be found here:
+
+https://www.nuget.org/packages/Codheadz.PiLITEr/1.0.0-CI00000
+
+Install-Package Codheadz.PiLITEr -Pre 
+
+
